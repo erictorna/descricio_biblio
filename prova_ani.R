@@ -15,6 +15,10 @@ library(topicmodels)
 library(viridis)
 library(forcats)
 
+####################################
+### Primera part: busqueda general al pub med
+###################################
+
 # Primer definim la cerca tal com la posariem al PubMed
 # search_topic <- '"Homosexuality, Female"[Mesh] OR lesbian* [ti] OR “women loving women”[tiab] OR “women who have sex with Women” [ti] OR WSW [ti] OR ((women [ti] OR female [ti]) AND (bicurious [tiab] OR heteroflexible [tiab] OR bisexual*[ti] OR bisexuality[MeSH Terms] OR homosexuality [MeSH Terms] OR homosexual*[ti] OR queer [ti] OR “same gender loving”[ti] OR “same sex attracted”[ti] OR “same sex couple”[ti] OR “same sex couples”[ti] OR “same sex relations”[ti] OR “sexual and gender minorities”[ti] OR “sexual and gender minority”[ti] OR “sexual identity”[ti] OR “sexual minorities”[ti] OR “sexual minority”[ti] OR “sexual orientation”[ti])) NOT (gay  [ti] OR MSM [ti] OR “men who have sex with men” [ti]) '
 search_topic <- ' (("homosexuality, female"[MeSH Terms] OR "lesbian*"[Title] OR "women loving women"[Title/Abstract] OR "women who have sex with Women"[Title] OR "WSW"[Title] OR (("women"[Title] OR "female"[Title]) AND ("bicurious"[Title/Abstract] OR "heteroflexible"[Title/Abstract] OR "bisexual*"[Title] OR "bisexuality"[MeSH Terms] OR "homosexuality"[MeSH Terms] OR "homosexual*"[Title] OR "queer"[Title] OR "same gender loving"[Title] OR "same sex attracted"[Title] OR "same sex couple"[Title] OR "same sex couples"[Title] OR "same sex relations"[Title] OR "sexual and gender minorities"[Title] OR "sexual and gender minority"[Title] OR "sexual identity"[Title] OR "sexual minorities"[Title] OR "sexual minority"[Title] OR "sexual orientation"[Title]))) NOT ("gay"[Title] OR "MSM"[Title] OR "men who have sex with"[Title] OR "transgender women"[Title] OR "transgender men"[Title] OR "trans men"[Title] OR "trans women"[All Fields] OR "lgbt*"[Title] OR "homosexuality, male"[MeSH Terms])) AND ((humans[Filter]) AND (2004:3000/12/12[pdat]) AND (english[Filter])) '
@@ -57,6 +61,7 @@ fullDF <- tryCatch(
   finally = {stopCluster(cl)}) 
 
 # Extraer información del número de citaciones del DOI
+# Això tarda la ostia
 cit <- do.call("rbind",lapply(unique(fullDF$doi),Ncitation))
 
 
@@ -108,6 +113,9 @@ nomes_mesh = FinalDF %>% dplyr::select(pmid, Mesh)
 rm(cl, Meshtable, my_query, records, search_query, tyPub, Mesh)
 # Obtenim un taula amb tots els mesh existents
 
+############################################
+### Part 2: Ajuntem Mesh terms per categories i fem taules amb articles que tinguin almenys un mesh term dins de X categoria
+############################################
 library(xml2)
 library(XML)
 library(tibble)
@@ -152,3 +160,40 @@ fwrite(as.data.frame(result_E_unique), file = '~/idiap/projects/descrip_pubmed/a
 result_N_unique = result_N[[1]]
 result_N_unique = unique(result_N_unique)
 fwrite(as.data.frame(result_N_unique), file = '~/idiap/projects/descrip_pubmed/healthcare_pmid.csv')
+
+############################################
+### Part 3: creem taules amb nomes els meshes que pertanyen a cada categoria
+############################################
+
+lines <- readLines("~/idiap/projects/descrip_pubmed/pubmeds_filtrats/pubmed_C.txt")
+df_C <- data.frame(text = lines, stringsAsFactors = FALSE)
+lines <- readLines("~/idiap/projects/descrip_pubmed/pubmeds_filtrats/pubmed_E.txt")
+df_E <- data.frame(text = lines, stringsAsFactors = FALSE)
+lines <- readLines("~/idiap/projects/descrip_pubmed/pubmeds_filtrats/pubmed_N.txt")
+df_N <- data.frame(text = lines, stringsAsFactors = FALSE)
+
+should_keep <- function(line, descriptors) {
+  if (startsWith(line, "MH  - ")) {
+    if (any(sapply(descriptors, grepl, x = line))) {
+      return(TRUE)
+    } else {
+      return(FALSE)
+    }
+  } else {
+    return(TRUE)
+  }
+}
+descriptors <- C$DescriptorName
+df_filtered <- df[sapply(df_C$text, should_keep, descriptors = descriptors), ]
+df_C_filtered <- data.frame(text = df_filtered, stringsAsFactors = FALSE)
+write.table(df_C_filtered, file = '~/idiap/projects/descrip_pubmed/pubmeds_filtrats/nomes_C.txt', row.names = FALSE, col.names = FALSE, quote = FALSE)
+
+descriptors <- E$DescriptorName
+df_filtered <- df[sapply(df_E$text, should_keep, descriptors = descriptors), ]
+df_E_filtered <- data.frame(text = df_filtered, stringsAsFactors = FALSE)
+write.table(df_E_filtered, file = '~/idiap/projects/descrip_pubmed/pubmeds_filtrats/nomes_E.txt', row.names = FALSE, col.names = FALSE, quote = FALSE)
+
+descriptors <- N$DescriptorName
+df_filtered <- df[sapply(df_N$text, should_keep, descriptors = descriptors), ]
+df_N_filtered <- data.frame(text = df_filtered, stringsAsFactors = FALSE)
+write.table(df_N_filtered, file = '~/idiap/projects/descrip_pubmed/pubmeds_filtrats/nomes_N.txt', row.names = FALSE, col.names = FALSE, quote = FALSE)
