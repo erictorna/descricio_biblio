@@ -104,7 +104,7 @@ FinalDF[grepl("Male", FinalDF$Mesh),] %>%
                                  "$(this.api().table().container()).css({'font-size': '70%'});",
                                  "}")))
 
-nomes_mesh = FinalDF %>% dplyr::select(title, doi, Mesh)
+nomes_mesh = FinalDF %>% dplyr::select(pmid, Mesh)
 rm(cl, Meshtable, my_query, records, search_query, tyPub, Mesh)
 # Obtenim un taula amb tots els mesh existents
 
@@ -125,7 +125,7 @@ setDT(nomes_mesh)
 
 nomes_mesh[, Mesh := strsplit(Mesh, ",")]
 
-nomes_mesh_expanded <- nomes_mesh[, .(doi, Mesh = unlist(Mesh)), by = doi]
+nomes_mesh_expanded <- nomes_mesh[, .(Mesh = unlist(Mesh)), by = pmid]
 nomes_mesh_expanded[, Mesh := trimws(Mesh)]
 
 # setkey(nomes_mesh_expanded, Mesh)
@@ -139,3 +139,16 @@ result_N = nomes_mesh_expanded[Mesh %in% N$DescriptorName]
 fwrite(result_C, file = '~/idiap/projects/descrip_pubmed/diseases.csv')
 fwrite(result_E, file = '~/idiap/projects/descrip_pubmed/Analytical_diagnostic_techiques.csv')
 fwrite(result_N, file = '~/idiap/projects/descrip_pubmed/HealthCare.csv')
+
+# Al excel posar =TEXTJOIN(" OR ", TRUE, A1:A100) per tenir nomes una llista que pugui llegir el pubmed
+result_C_unique = result_C[[1]]
+result_C_unique = unique(result_C_unique)
+fwrite(as.data.frame(result_C_unique), file = '~/idiap/projects/descrip_pubmed/diseases_pmid.csv')
+
+result_E_unique = result_E[[1]]
+result_E_unique = unique(result_E_unique)
+fwrite(as.data.frame(result_E_unique), file = '~/idiap/projects/descrip_pubmed/analytical_pmid.csv')
+
+result_N_unique = result_N[[1]]
+result_N_unique = unique(result_N_unique)
+fwrite(as.data.frame(result_N_unique), file = '~/idiap/projects/descrip_pubmed/healthcare_pmid.csv')
